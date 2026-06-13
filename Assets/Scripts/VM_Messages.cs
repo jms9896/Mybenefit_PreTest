@@ -56,7 +56,7 @@ public class PurchaseResult
     public bool IsSuccess;
     public PurchaseFailReason Reason;
 
-    public PurchaseResult(int productId, bool isSuccess, PurchaseFailReason reason)
+    public PurchaseResult(int productId, bool isSuccess, PurchaseFailReason reason = PurchaseFailReason.None)
     {
         ProductId = productId;
         IsSuccess = isSuccess;
