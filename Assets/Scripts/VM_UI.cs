@@ -24,6 +24,7 @@ public class VM_UI : MonoBehaviour
     [Header("로그")]
     [SerializeField] private GameObject logPrefab;     // Log
     [SerializeField] private Transform logContainer;
+    [SerializeField] private ScrollRect logScrollRect; // 자동 최하단 스크롤용
 
     // 구매 후 재고 갱신 위해 상품 id → 뷰 보관
     private readonly Dictionary<int, VM_ItemView> itemViews = new();
@@ -139,6 +140,10 @@ public class VM_UI : MonoBehaviour
         if (text != null)
             text.text = message;
         go.transform.SetAsLastSibling();
+
+        Canvas.ForceUpdateCanvases();                       // 레이아웃 즉시 갱신
+        if (logScrollRect != null)
+            logScrollRect.verticalNormalizedPosition = 0f;  // 0 = 최하단
     }
 
     private string ReasonText(PurchaseFailReason reason)
