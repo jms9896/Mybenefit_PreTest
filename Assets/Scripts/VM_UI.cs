@@ -1,19 +1,154 @@
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+using System.Collections.Generic;
 
 public class VM_UI : MonoBehaviour
 {
-    // TODO: 프리팹 / 표시 영역 참조 (상품·음료·로그 패널, 잔액 텍스트)
+    private VM_EventBus bus;
+    private VM_Data data;
 
-    // TODO: 결과 메시지 구독 (잔액 변경 / 구매 결과 / 소비 결과)
+    [Header("상단 정보")]
+    [SerializeField] private TMP_Text idText;          // machineId
+    [SerializeField] private TMP_Text moneyText;       // 잔액 (Current Money)
+    [SerializeField] private Image powerLight;         // status 색상
 
-    // TODO: 상품 목록 화면 생성 — 데이터 순회해 프리팹 배치
-    //       !! 가격/재고 표시 포맷("1,500 Won"/"10 ea")은 여기서 만든다
-    //       !! 이미지는 상품 name 기준 Resources.Load (imageUrl 무시)
+    [Header("상품 목록")]
+    [SerializeField] private GameObject itemPrefab;    // Vending Machine Item (VM_ItemView 부착)
+    [SerializeField] private Transform itemContainer;  // ScrollView Content
 
-    // TODO: 버튼 클릭 → 요청 메시지 발행 (금액 투입 / 구매 / 소비)
+    [Header("인벤토리(음료)")]
+    [SerializeField] private GameObject beveragePrefab; // Beverage (VM_BeverageView 부착)
+    [SerializeField] private Transform inventoryContainer;
 
-    // TODO: 결과 수신 시 화면 갱신 (잔액, 구매 성공/실패, 소비)
-    // TODO: 화면 로그 출력 (Log.prefab, 아래→위 적재)
+    [Header("로그")]
+    [SerializeField] private GameObject logPrefab;     // Log
+    [SerializeField] private Transform logContainer;
 
-    // TODO: 파괴 시 구독 해제 (메모리 누수 방지)
+    // 구매 후 재고 갱신 위해 상품 id → 뷰 보관
+    private readonly Dictionary<int, VM_ItemView> itemViews = new();
+
+    // ── 초기화 ──
+    public void Init(VM_EventBus bus, VM_Data data)
+    {
+        this.bus = bus;
+        this.data = data;
+
+        bus.Subscribe<BalanceChanged>(OnBalanceChanged);
+        bus.Subscribe<PurchaseResult>(OnPurchaseResult);
+        bus.Subscribe<ConsumeResult>(OnConsumeResult);
+
+        BindHeader();
+        BuildProductList();
+        UpdateMoney(data.Balance);
+    }
+
+    private void OnDestroy()
+    {
+        if (bus == null) return;
+        bus.Unsubscribe<BalanceChanged>(OnBalanceChanged);
+        bus.Unsubscribe<PurchaseResult>(OnPurchaseResult);
+        bus.Unsubscribe<ConsumeResult>(OnConsumeResult);
+    }
+
+    // ── 상단 정보 바인딩 ──
+    private void BindHeader()
+    {
+        idText.text = data.MachineId;
+        bool active = data.Status == "active";
+        powerLight.color = active ? Color.green : Color.red;   // active 초록 / inactive 빨강
+    }
+
+    // ── 상품 목록 생성 ──
+    private void BuildProductList()
+    {
+        foreach (ProductData product in data.Products)
+        {
+            GameObject go = Instantiate(itemPrefab, itemContainer);
+            VM_ItemView view = go.GetComponent<VM_ItemView>();
+
+            int id = product.Id;   // 클로저 캡처 안전하게 지역변수로
+            view.Setup(product, () => bus.Publish(new PurchaseRequested(id)));
+            itemViews[id] = view;
+        }
+    }
+
+    // ── 재화 획득 버튼 (인스펙터 onClick → InsertMoney(금액) 연결) ──
+    public void InsertMoney(int amount)
+    {
+        bus.Publish(new InsertMoneyRequested(amount));
+    }
+
+    // ── 결과 수신 ──
+    private void OnBalanceChanged(BalanceChanged msg)
+    {
+        UpdateMoney(msg.Balance);
+        AddLog($"잔액 변경: {msg.Balance:N0} Won");
+    }
+
+    private void OnPurchaseResult(PurchaseResult msg)
+    {
+        if (msg.IsSuccess)
+        {
+            ProductData product = data.Find(msg.ProductId);
+            if (product != null && itemViews.TryGetValue(msg.ProductId, out VM_ItemView view))
+                view.SetStock(product.Stock);   // 재고 표시 갱신
+
+            RefreshInventory();
+            AddLog($"구매 성공: {product?.Name}");
+        }
+        else
+        {
+            AddLog($"구매 실패: {ReasonText(msg.Reason)}");
+        }
+    }
+
+    private void OnConsumeResult(ConsumeResult msg)
+    {
+        RefreshInventory();
+        AddLog("음료 소비");
+    }
+
+    // ── 인벤토리 재구성 (구매/소비 시) ──
+    private void RefreshInventory()
+    {
+        for (int i = inventoryContainer.childCount - 1; i >= 0; i--)
+            Destroy(inventoryContainer.GetChild(i).gameObject);
+
+        foreach (ProductData beverage in data.Beverages)
+        {
+            GameObject go = Instantiate(beveragePrefab, inventoryContainer);
+            VM_BeverageView view = go.GetComponent<VM_BeverageView>();
+
+            int id = beverage.Id;
+            view.Setup(beverage, () => bus.Publish(new ConsumeRequested(id)));
+        }
+    }
+
+    // ── 잔액 표시 ──
+    private void UpdateMoney(int balance)
+    {
+        moneyText.text = $"{balance:N0} Won";
+    }
+
+    // ── 화면 로그 (아래에 적재) ──
+    private void AddLog(string message)
+    {
+        GameObject go = Instantiate(logPrefab, logContainer);
+        TMP_Text text = go.GetComponentInChildren<TMP_Text>();
+        if (text != null)
+            text.text = message;
+        go.transform.SetAsLastSibling();
+    }
+
+    private string ReasonText(PurchaseFailReason reason)
+    {
+        switch (reason)
+        {
+            case PurchaseFailReason.OutOfStock: return "재고 없음";
+            case PurchaseFailReason.NotEnoughBalance: return "잔액 부족";
+            case PurchaseFailReason.MachineOff: return "전원 꺼짐";
+            default: return "알 수 없음";
+        }
+    }
 }
