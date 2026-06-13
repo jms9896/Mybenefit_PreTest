@@ -1,6 +1,8 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 
+[System.Serializable]
 public class VM_Data
 {
     #region fields
@@ -9,6 +11,7 @@ public class VM_Data
 
     private int balance;
     public int Balance => balance;
+    private int balanceLimit = 10000;
 
     private List<ProductData> beverages = new();
     public List<ProductData> Beverages => beverages;
@@ -37,10 +40,58 @@ public class VM_Data
 
     // ── 변경 통로 (쓰기) ──  
     // [TODO: Engine 단계에서 시그니처 확정하며 추가]
-    //   AddBalance(amount)            — 잔액 증감, 상한 10,000 적용
-    //   DecreaseStock(id)             — 구매 성공 시 재고 -1
+    //   AddBalance(amount) — 잔액 증감, 상한 10,000 적용
+    public void AddBalance(int amount)
+    {
+        balance += amount;
+        if (balance > balanceLimit)
+        {
+            balance = balanceLimit;
+            Debug.Log("[VM_Data] 최대 잔액 한도를 초과하였습니다.");
+        }
+    }
+
+    //   Find(id) — 상품 id로 ProductData 찾기
+    public ProductData Find(int id)
+    {
+        for (int i = 0; i < Products.Count; i++)
+        {
+            if (Products[i].Id == id)
+            {
+                return Products[i];
+            }
+        }
+        Debug.Log("[VM_Data] 상품 못 찾았음");
+        return null;
+    }
+
+    //   DecreaseStock(id) — 구매 성공 시 재고 -1
+    public void DecreaseStock(int id)
+    {
+        ProductData product = Find(id);
+        if (product != null)
+        {
+            product.DecreaseStock();   // 찾은 상품한테 시킴
+        }
+    }
+
     //   AddBeverage / RemoveBeverage  — 구매 시 추가 / 소비 시 제거
-    //   Find(id)                      — 상품 id로 ProductData 찾기
+    public void AddBeverage(ProductData product)
+    {
+        beverages.Add(product);
+    }
+
+    public void RemoveBeverage(int id)
+    {
+        for (int i = 0; i < beverages.Count; i++)
+        {
+            if (beverages[i].Id == id)
+            {
+                beverages.RemoveAt(i);
+                return;
+            }
+        }
+    }
 }
 
 /* 데이터 형식 참고
@@ -91,6 +142,14 @@ public class ProductData
     public int Price => price;
     public int Stock => stock;
 
-
+    public void DecreaseStock(int num = 1)
+    {
+        stock -= num;
+        if (stock <= 0)
+        {
+            Debug.Log("[VM_Data] 재고가 없습니다.");
+            stock = 0;
+        }
+    }
 
 }
