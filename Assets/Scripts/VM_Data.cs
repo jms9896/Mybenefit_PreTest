@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 
 [System.Serializable]
 public class VM_Data
@@ -12,7 +11,6 @@ public class VM_Data
     private int balance;
     public int Balance => balance;
     private int balanceLimit = 10000;
-    private bool isActive = false;
 
     private List<ProductData> beverages = new();
     public List<ProductData> Beverages => beverages;

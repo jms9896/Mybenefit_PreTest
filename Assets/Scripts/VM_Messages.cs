@@ -71,11 +71,6 @@ public class ConsumeResult
     public bool IsSuccess;
     public FailReason Reason;
 
-    public ConsumeResult(int beverageId)
-    {
-        BeverageId = beverageId;
-    }
-
     // 오버로드
     public ConsumeResult(int beverageId, bool isSuccess, FailReason reason = FailReason.None)
     {
