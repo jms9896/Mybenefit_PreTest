@@ -12,6 +12,7 @@ public class VM_Data
     private int balance;
     public int Balance => balance;
     private int balanceLimit = 10000;
+    private bool isActive = false;
 
     private List<ProductData> beverages = new();
     public List<ProductData> Beverages => beverages;
@@ -20,7 +21,9 @@ public class VM_Data
     public List<ProductData> Products => itemsData.Products;
     public string MachineId => itemsData.MachineId;
     public string Status => itemsData.Status;
+    public bool IsActive => Status == "active";
 
+    
     #endregion
 
     // ── 로드 ──

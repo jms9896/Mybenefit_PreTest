@@ -54,9 +54,9 @@ public class PurchaseResult
 {
     public int ProductId;
     public bool IsSuccess;
-    public PurchaseFailReason Reason;
+    public FailReason Reason;
 
-    public PurchaseResult(int productId, bool isSuccess, PurchaseFailReason reason = PurchaseFailReason.None)
+    public PurchaseResult(int productId, bool isSuccess, FailReason reason = FailReason.None)
     {
         ProductId = productId;
         IsSuccess = isSuccess;
@@ -68,19 +68,43 @@ public class PurchaseResult
 public class ConsumeResult
 {
     public int BeverageId;
+    public bool IsSuccess;
+    public FailReason Reason;
+
     public ConsumeResult(int beverageId)
     {
         BeverageId = beverageId;
     }
+
+    // 오버로드
+    public ConsumeResult(int beverageId, bool isSuccess, FailReason reason = FailReason.None)
+    {
+        BeverageId = beverageId;
+        IsSuccess = isSuccess;
+        Reason = reason;
+    }
 }
 
-// ── 실패 사유 enum (PurchaseResult 전용) ──
+// InsertMoneyResult ― 재화 획득/실패
+public class InsertMoneyResult
+{
+    public bool IsSuccess;
+    public FailReason Reason;
 
-// PurchaseFailReason enum — None / OutOfStock / NotEnoughBalance / MachineOff
-public enum PurchaseFailReason
+    public InsertMoneyResult(bool isSuccess, FailReason reason = FailReason.None)
+    {
+        IsSuccess = isSuccess;
+        Reason = reason;
+    }
+}
+
+// ── 실패 사유 enum ──
+
+// FailReason enum — 
+public enum FailReason
 {
     None = 0,
-    OutOfStock = 1,
+    MachineOff,
+    OutOfStock,
     NotEnoughBalance,
-    MachineOff
 }

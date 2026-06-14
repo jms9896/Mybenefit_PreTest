@@ -36,6 +36,7 @@ public class VM_UI : MonoBehaviour
         this.data = data;
 
         bus.Subscribe<BalanceChanged>(OnBalanceChanged);
+        bus.Subscribe<InsertMoneyResult>(OnInsertMoneyResult);
         bus.Subscribe<PurchaseResult>(OnPurchaseResult);
         bus.Subscribe<ConsumeResult>(OnConsumeResult);
 
@@ -48,6 +49,7 @@ public class VM_UI : MonoBehaviour
     {
         if (bus == null) return;
         bus.Unsubscribe<BalanceChanged>(OnBalanceChanged);
+        bus.Unsubscribe<InsertMoneyResult>(OnInsertMoneyResult);
         bus.Unsubscribe<PurchaseResult>(OnPurchaseResult);
         bus.Unsubscribe<ConsumeResult>(OnConsumeResult);
     }
@@ -87,6 +89,12 @@ public class VM_UI : MonoBehaviour
         AddLog($"잔액 변경: {msg.Balance:N0} Won");
     }
 
+    private void OnInsertMoneyResult(InsertMoneyResult msg)
+    {
+        if (!msg.IsSuccess) // 실패의 경우만. 성공할 때는 출력 필요 없음
+            AddLog($"재화 획득 실패: {ReasonText(msg.Reason)}");
+    }
+
     private void OnPurchaseResult(PurchaseResult msg)
     {
         if (msg.IsSuccess)
@@ -106,8 +114,14 @@ public class VM_UI : MonoBehaviour
 
     private void OnConsumeResult(ConsumeResult msg)
     {
+        if (!msg.IsSuccess) // 실패상황
+        {
+            AddLog($"소비 실패: {ReasonText(msg.Reason)}");
+            return;
+        }
+
         RefreshInventory();
-        AddLog("음료 소비");
+        AddLog($"음료 소비: {data.Find(msg.BeverageId)?.Name}");
     }
 
     // ── 인벤토리 재구성 (구매/소비 시) ──
@@ -146,13 +160,13 @@ public class VM_UI : MonoBehaviour
             logScrollRect.verticalNormalizedPosition = 0f;  // 0 = 최하단
     }
 
-    private string ReasonText(PurchaseFailReason reason)
+    private string ReasonText(FailReason reason)
     {
         switch (reason)
         {
-            case PurchaseFailReason.OutOfStock: return "재고 없음";
-            case PurchaseFailReason.NotEnoughBalance: return "잔액 부족";
-            case PurchaseFailReason.MachineOff: return "전원 꺼짐";
+            case FailReason.MachineOff: return "전원 꺼짐";
+            case FailReason.OutOfStock: return "재고 없음";
+            case FailReason.NotEnoughBalance: return "잔액 부족";
             default: return "알 수 없음";
         }
     }

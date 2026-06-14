@@ -20,7 +20,14 @@ public class VM_Engine
     // TODO: 금액 투입 처리 — 잔액 상한(10,000) 검증 → 잔액 변경 결과 발행
     private void OnInsertMoney(InsertMoneyRequested msg)
     {
+        if (!data.IsActive)
+        {
+            bus.Publish(new InsertMoneyResult(false, FailReason.MachineOff));
+            return;
+        }
+
         data.AddBalance(msg.Amount);
+        bus.Publish(new InsertMoneyResult(true));
         bus.Publish(new BalanceChanged(data.Balance));
     }
 
@@ -30,7 +37,8 @@ public class VM_Engine
         // 전원 꺼짐
         if (data.Status != "active")
         {
-            bus.Publish(new PurchaseResult(msg.ProductId, false, PurchaseFailReason.MachineOff));
+            bus.Publish(new PurchaseResult(msg.ProductId, false, FailReason.MachineOff));
+            // 라이트 red로 변경
             return;
         }
         ProductData productData = data.Find(msg.ProductId);
@@ -38,14 +46,14 @@ public class VM_Engine
         // 재고 없음
         if (productData.Stock <= 0)
         {
-            bus.Publish(new PurchaseResult(msg.ProductId, false, PurchaseFailReason.OutOfStock));
+            bus.Publish(new PurchaseResult(msg.ProductId, false, FailReason.OutOfStock));
             return;
         }
 
         // 잔액부족
         if (data.Balance < productData.Price)
         {
-            bus.Publish(new PurchaseResult(msg.ProductId, false, PurchaseFailReason.NotEnoughBalance));
+            bus.Publish(new PurchaseResult(msg.ProductId, false, FailReason.NotEnoughBalance));
             return;
         }
 
@@ -59,8 +67,15 @@ public class VM_Engine
     // TODO: 소비 처리 — 소비 결과 발행
     private void OnConsume(ConsumeRequested msg)
     {
+        //status=Inactive 면 로직 거부 + 실패 사유 발행 + 로그
+        if (!data.IsActive)
+        {
+            bus.Publish(new ConsumeResult(msg.BeverageId, false, FailReason.MachineOff));
+            return;
+        }
+
+        // 성공
         data.RemoveBeverage(msg.BeverageId);
-        bus.Publish(new ConsumeResult(msg.BeverageId));
+        bus.Publish(new ConsumeResult(msg.BeverageId, true));
     }
-    //       !! status=Inactive 면 로직 거부 + 실패 사유 발행 + 로그
 }
