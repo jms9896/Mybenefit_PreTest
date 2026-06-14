@@ -129,7 +129,7 @@ public class VM_UI : MonoBehaviour
     // ── 잔액 표시 ──
     private void UpdateMoney(int balance)
     {
-        moneyText.text = $"{balance:N0} Won";
+        moneyText.text = $"money : {balance} won";
     }
 
     // ── 화면 로그 (아래에 적재) ──
