@@ -6,13 +6,9 @@
 * Unity 6000.3.11f1(LTS) 버전을 사용한다.
 * 요구사항 명세 → 아키텍처 → 구현 순서로 작성/작업 진행한다.
 
----
-
 ## 결과
 
 * 결과 영상 : [https://minseong.synology.me:5008/sharing/aTLT1XPHs](https://minseong.synology.me:5008/sharing/aTLT1XPHs)
-
----
 
 ## 요구사항 분석
 
@@ -117,28 +113,39 @@
   * 전체(메인) 클래스 다이어그램 구조
     ```mermaid
     classDiagram
-        class VM_Manager
+        class VM_Manager {
+            <<MonoBehaviour>>
+        }
+        class VM_UI {
+            <<MonoBehaviour>>
+        }
         class VM_EventBus
         class VM_Data
         class VM_Engine
-        class VM_UI
 
         VM_Manager *-- VM_EventBus : creates
         VM_Manager *-- VM_Data : creates
         VM_Manager *-- VM_Engine : creates
-        VM_Manager *-- VM_UI : creates
+        VM_Manager --> VM_UI : references / init
         VM_Engine ..> VM_Data : reads / updates
         VM_UI ..> VM_EventBus : publish / subscribe
         VM_Engine ..> VM_EventBus : publish / subscribe
+
     ```
   * UI - View 별도 구조
     ```mermaid
     classDiagram
-        class VM_UI
-        class VM_ItemView
-        class VM_BeverageView
-        VM_UI ..> VM_ItemView : creates / setup
-        VM_UI ..> VM_BeverageView : creates / setup
+        class VM_UI {
+            <<MonoBehaviour>>
+        }
+        class VM_ItemView {
+            <<MonoBehaviour>>
+        }
+        class VM_BeverageView {
+            <<MonoBehaviour>>
+        }
+        VM_UI ..> VM_ItemView : Instantiate / setup
+        VM_UI ..> VM_BeverageView : Instantiate / setup
 
     ```
 * 클래스 계층
@@ -148,20 +155,23 @@
     * `VM_UI` : UI 관련 클래스
       * Log 프리팹으로 화면 로그 기록
     * `VM_Engine` : 구매, 소비 등 상호작용 관련 클래스
-* 메시지 - 통신 계약
+* 메시지 - 통신 규약
   * 메시지는 `VM_UI`와 `VM_Engine`이 공유하는 통신 계약이다.
     * 모듈 분리를 위해 `VM_Messages`에 모아 정의한다.
   * 요청은 UI→Engine, 결과는 Engine→UI 방향으로 고정된다.
-  * 트리거 / 발행 시점 (다이어그램에 없는 정보)| 메시지               | 구분 | 트리거 / 발행 시점                           |
-    | -------------------- | ---- | -------------------------------------------- |
-    | InsertMoneyRequested | 요청 | 금액 투입 버튼 클릭                          |
-    | PurchaseRequested    | 요청 | 상품(구매) 버튼 클릭                         |
-    | ConsumeRequested     | 요청 | 보유 음료(소비) 버튼 클릭                    |
-    | BalanceChanged       | 결과 | 잔액이 실제로 바뀔 때 (투입·구매 성공 공유) |
-    | InsertMoneyResult    | 결과 | 재화 획득 처리 후 (성공 / 전원 차단)         |
-    | PurchaseResult       | 결과 | 구매 처리 후 (성공 / 실패 + 사유)            |
-    | ConsumeResult        | 결과 | 소비 처리 후 (성공 / 실패 + 사유)            |
+  * 트리거 / 발행 시점 (다이어그램에 없는 정보)
   * `FailReason` enum은 구매·소비·획득 결과가 공유하는 실패 사유다.
+
+| 메시지               | 구분 | 트리거 / 발행 시점                           |
+| -------------------- | ---- | -------------------------------------------- |
+| InsertMoneyRequested | 요청 | 금액 투입 버튼 클릭                          |
+| PurchaseRequested    | 요청 | 상품(구매) 버튼 클릭                         |
+| ConsumeRequested     | 요청 | 보유 음료(소비) 버튼 클릭                    |
+| BalanceChanged       | 결과 | 잔액이 실제로 바뀔 때 (투입·구매 성공 공유) |
+| InsertMoneyResult    | 결과 | 재화 획득 처리 후 (성공 / 전원 차단)         |
+| PurchaseResult       | 결과 | 구매 처리 후 (성공 / 실패 + 사유)            |
+| ConsumeResult        | 결과 | 소비 처리 후 (성공 / 실패 + 사유)            |
+
 * **시퀀스 다이어그램**
   * 초기화(시작)
     ```mermaid
@@ -194,6 +204,8 @@
         User->>UI: 투입 버튼 클릭
         UI->>Bus: Publish(InsertMoneyRequested)
         Bus->>Engine: OnInsertMoney()
+        Engine->>Data: 전원 상태(status) 조회
+        Data-->>Engine: active / inactive
         alt 전원 꺼짐(Inactive)
             Engine->>Bus: Publish(InsertMoneyResult(Fail, MachineOff))
             Bus->>UI: OnInsertMoneyResult()
@@ -219,23 +231,22 @@
         User->>UI: 구매 버튼 클릭
         UI->>Bus: Publish(PurchaseRequested)
         Bus->>Engine: OnPurchase()
-        Engine->>Data: status 확인
-        alt 전원 꺼짐(Inactive)
-            Engine->>Bus: Publish(PurchaseResult(Fail, MachineOff))
-        else 전원 켜짐(Active)
-            Engine->>Data: 잔액·재고 확인
-            alt 구매 성공
-                Engine->>Data: Balance -= price, Stock--
-                Engine->>Data: Beverages에 추가
-                Engine->>Bus: Publish(PurchaseResult(IsSuccess))
-                Engine->>Bus: Publish(BalanceChanged)
-            else 잔액 부족 / 재고 없음
-                Engine->>Bus: Publish(PurchaseResult(Fail, NotEnoughBalance/OutOfStock))
-            end
+        Engine->>Data: 전원·재고·잔액 조회
+        Data-->>Engine: status · stock · balance
+        alt 구매 성공
+            Engine->>Data: Balance -= price, Stock--, Beverages 추가
+            Engine->>Bus: Publish(PurchaseResult(Success))
+            Engine->>Bus: Publish(BalanceChanged)
+            Bus->>UI: OnPurchaseResult()
+            UI->>UI: 재고·인벤토리 갱신 + AddLog("구매 성공")
+            Bus->>UI: OnBalanceChanged()
+            UI->>UI: 잔액 표시 갱신 + AddLog("잔액 변경")
+        else 구매 실패 (전원 꺼짐 / 재고 없음 / 잔액 부족)
+            Engine->>Bus: Publish(PurchaseResult(Fail, 사유))
+            Bus->>UI: OnPurchaseResult()
+            UI->>UI: AddLog("구매 실패: " + 사유)
         end
-        Bus->>UI: OnPurchaseResult()
-        Bus->>UI: OnBalanceChanged()
-        UI->>UI: UI 갱신
+
     ```
   * 소비
     ```mermaid
@@ -249,6 +260,8 @@
         User->>UI: 소비(마시기) 버튼 클릭
         UI->>Bus: Publish(ConsumeRequested)
         Bus->>Engine: OnConsume()
+        Engine->>Data: 전원 상태(status) 조회
+        Data-->>Engine: active / inactive
         alt 전원 꺼짐(Inactive)
             Engine->>Bus: Publish(ConsumeResult(Fail, MachineOff))
             Bus->>UI: OnConsumeResult()
@@ -261,8 +274,6 @@
         end
 
     ```
-
----
 
 ## QA
 
