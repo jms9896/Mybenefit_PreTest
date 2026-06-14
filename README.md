@@ -1,4 +1,3 @@
-
 # (주)마이베네핏 사전과제
 
 ## 개요
@@ -6,6 +5,13 @@
 * 마이베네핏 사전과제를 기록하기 위한 문서이다.
 * Unity 6000.3.11f1(LTS) 버전을 사용한다.
 * 요구사항 명세 → 아키텍처 → 구현 순서로 작성/작업 진행한다.
+
+---
+
+
+## 결과
+
+* 결과 영상 : [https://minseong.synology.me:5008/sharing/aTLT1XPHs](https://minseong.synology.me:5008/sharing/aTLT1XPHs)
 
 ---
 
@@ -262,6 +268,10 @@
         end
 
     ```
+
+
+---
+
 
 ## QA
 
