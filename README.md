@@ -8,7 +8,6 @@
 
 ---
 
-
 ## 결과
 
 * 결과 영상 : [https://minseong.synology.me:5008/sharing/aTLT1XPHs](https://minseong.synology.me:5008/sharing/aTLT1XPHs)
@@ -29,8 +28,6 @@
 * 데이터 소스 : Assets/Resources/Items.json
 * 파싱 데이터 : machineid, status, products
 
----
-
 **2. UI 상태 및 데이터 바인딩**
 
 * 상단 정보(Canvas/Vending Machine/Top/Group)
@@ -43,8 +40,6 @@
   * 프리팹: Assets/Prefabs/Vending Machine Item
   * 초기화: products 데이터를 기반으로 Vending Machine Item 게임 오브젝트 생성, 리스트 동적 생성 및 데이터, Resources 폴더 내 이미지 바인딩
   * 제약 조건: 가격 및 잔여 갯수의 원본 string format 유지
-
----
 
 **3. 핵심 비즈니스 로직**
 
@@ -59,8 +54,6 @@
   * 초기화: Inventory(Canvas/Vending Machine/Inventory/ScrollView) 아이템 생성 및 적재
 * 상품 소비
   * Inventory내 Item 선택 시 Item 비표시
-
----
 
 **4. 로그 시스템**
 
@@ -269,9 +262,7 @@
 
     ```
 
-
 ---
-
 
 ## QA
 
